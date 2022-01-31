@@ -1,0 +1,477 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Cloud Academy IDE Lab Platform - Terraform Git Management v1.0.0"
+
+Parameters:
+  VpcId:
+    Type: String
+    #Default: "{VpcId}"
+    Default: "vpc-24be705c"
+    Description: The ID of the default VPC
+
+  SubnetIdA:
+    Type: String
+    #Default: "{SubnetIdA}"
+    Default: "subnet-755b712f"
+    Description: The ID of subnet 1 in the default VPC
+
+  SubnetIdB:
+    Type: String
+    #Default: "{SubnetIdB}"
+    Default: "subnet-eaf2aa93"
+    Description: The ID of subnet 2 in the default VPC
+
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    #Default: "{KeyName}"
+    Default: "cloudacademydemo22"
+    Type: AWS::EC2::KeyPair::KeyName
+
+  EC2InstanceTypeIDE:
+    Description: EC2 instance type for the IDE cluster instance
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.large
+      - m5.xlarge
+    ConstraintDescription: Must be a valid EC2 instance type
+
+  EC2ImageIDEId:
+    Type: AWS::EC2::Image::Id
+    #Default: ami-007bd16bfb0492a80 - theia starts in boot script
+    #Default: ami-0468f231d435a7ca0
+    #Default: ami-0377d853b4c9508e7
+    Default: ami-0bf149dbc8dd8b549 #8Gb ebs rebuild image
+    Description: CloudAcademy IDE AMI id - based on Amazon Linux 2
+
+Resources:
+  EC2SecurityGroupIDE:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: inbound rules container for IDE vm
+      VpcId: !Ref VpcId
+
+  EC2SecurityGroupInternal:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: inbound rules container for node to node comms
+      VpcId: !Ref VpcId
+
+  EC2SecurityGroupSSHIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: EC2SecurityGroupIDE
+    Properties:
+      GroupId: !Ref EC2SecurityGroupIDE
+      Description: Allow 22 inbound SSH from everywhere
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  EC2SecurityGroupIDE9000Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: EC2SecurityGroupIDE
+    Properties:
+      GroupId: !Ref EC2SecurityGroupIDE
+      Description: Allow 9000 inbound from everywhere
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 9000
+      ToPort: 9000
+
+  EC2SecurityGroupIDE80Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: EC2SecurityGroupIDE
+    Properties:
+      GroupId: !Ref EC2SecurityGroupIDE
+      Description: Allow 80 inbound from everywhere
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  EC2SecurityGroupIDE443Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: EC2SecurityGroupIDE
+    Properties:
+      GroupId: !Ref EC2SecurityGroupIDE
+      Description: Allow 443 inbound from everywhere
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  EC2SecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: EC2SecurityGroupInternal
+    Properties:
+      GroupId: !Ref EC2SecurityGroupInternal
+      Description: Allow all inbound traffic from other nodes with the same sg attached 
+      SourceSecurityGroupId: !GetAtt EC2SecurityGroupInternal.GroupId
+      IpProtocol: -1
+
+  # ==========================================================
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: inbound rules container for App
+      VpcId: !Ref VpcId
+
+  #TODO: needs to be locked down
+  AppSecurityGroup80Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSecurityGroup
+    Properties:
+      GroupId: !Ref AppSecurityGroup
+      Description: Allow 80 inbound from ALB
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  #TODO: needs to be locked down
+  AppSecurityGroup8080Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSecurityGroup
+    Properties:
+      GroupId: !Ref AppSecurityGroup
+      Description: Allow 80 inbound from ALB
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+
+  #TODO: review maybe needs to be locked down
+  AppSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: AppSecurityGroup
+    Properties:
+      GroupId: !Ref AppSecurityGroup
+      Description: Allow all outbound traffic
+      IpProtocol: -1
+      FromPort: 0
+      ToPort: 0
+      CidrIp: "0.0.0.0/0"
+
+  MongoDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: inbound rules container for MongoDB
+      VpcId: !Ref VpcId
+
+  MongoDBSecurityGroup27017Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: MongoDBSecurityGroup
+    Properties:
+      GroupId: !Ref MongoDBSecurityGroup
+      Description: Allow 27017 inbound from App
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref AppSecurityGroup
+
+  MongoDBSecurityGroup22Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: MongoDBSecurityGroup
+    Properties:
+      GroupId: !Ref MongoDBSecurityGroup
+      Description: Allow 22 inbound from Bastion
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref EC2SecurityGroupIDE
+
+  #TODO: review maybe needs to be locked down
+  MongoDBSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: MongoDBSecurityGroup
+    Properties:
+      GroupId: !Ref MongoDBSecurityGroup
+      Description: Allow all outbound traffic
+      IpProtocol: -1
+      FromPort: 0
+      ToPort: 0
+      CidrIp: "0.0.0.0/0"
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: inbound rules container for ALB
+      VpcId: !Ref VpcId
+
+  ALBSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: ALBSecurityGroup
+    Properties:
+      GroupId: !Ref ALBSecurityGroup
+      Description: Allow 80 inbound from everywhere
+      CidrIp: "0.0.0.0/0"
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  ALBSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: ALBSecurityGroup
+    Properties:
+      GroupId: !Ref ALBSecurityGroup
+      Description: Allow all outbound traffic to App Security Group
+      IpProtocol: -1
+      FromPort: 0
+      ToPort: 0
+      DestinationSecurityGroupId: !Ref AppSecurityGroup
+
+  # ==========================================================
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+      - !Ref SubnetIdA
+      - !Ref SubnetIdB
+      SecurityGroups:
+        - !GetAtt ALBSecurityGroup.GroupId
+
+  EC2TargetGroupWebserver:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 6
+      Matcher:
+        HttpCode: '200'
+      #Name: EC2TargetGroupWebserver
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+
+  EC2TargetGroupAPI:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/ok"
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 6
+      Matcher:
+        HttpCode: '200'
+      #Name: EC2TargetGroupAPI
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref EC2TargetGroupWebserver
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ALBListenerRuleWebserver:
+    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Properties:
+      ListenerArn: !Ref ALBListener
+      Priority: 100
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - "/"
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref EC2TargetGroupWebserver
+
+  ALBListenerRuleAPI:
+    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Properties:
+      ListenerArn: !Ref ALBListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - "/languages"
+              - "/languages/*"
+              - "/languages/*/*"
+              - "/ok"
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref EC2TargetGroupAPI
+
+  # ==========================================================
+
+  IAMTerraformUser:
+    Type: AWS::IAM::User
+    Properties:
+      Policies:
+        - PolicyName: terraform-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - ec2:RunInstances
+              - ec2:StartInstances
+              - ec2:TerminateInstances
+              Resource:
+                - arn:aws:ec2:us-west-2:*:instance/*
+              Condition:
+                StringEquals:
+                  'ec2:InstanceType':
+                    - t2.micro
+            - Effect: Allow
+              Action:
+              - ec2:RunInstances
+              - ec2:StartInstances
+              Resource:
+                - arn:aws:ec2:us-west-2:*:network-interface/*
+                - arn:aws:ec2:us-west-2:*:subnet/*
+                - arn:aws:ec2:us-west-2:*:security-group/*
+                - arn:aws:ec2:us-west-2:*:key-pair/*
+                - arn:aws:ec2:us-west-2:*:image/*
+                - arn:aws:ec2:us-west-2:*:volume/*
+                - arn:aws:ec2:us-west-2:*:launch-template/*
+            - Effect: Allow
+              Action:
+              - ec2:Describe*
+              - ec2:CreateTags
+              - ec2:CreateVolume
+              - ec2:RegisterImage
+              - ec2:CreateImage
+              - ec2:CopyImage
+              - ec2:CreateSnapshot
+              - ec2:DeleteSnapshot
+              - ec2:DetachVolume
+              - ec2:ModifyImageAttribute
+              - ec2:CreateLaunchTemplate
+              - ec2:GetLaunchTemplateData
+              - ec2:Delete*
+              - autoscaling:CreateAutoScalingGroup
+              - autoscaling:Describe*
+              - autoscaling:Get*
+              - autoscaling:UpdateAutoScalingGroup
+              - autoscaling:Delete*
+              - elasticloadbalancing:Describe*
+              Resource:
+                - '*'
+            - Effect: Deny
+              Action:
+                - ec2:*Reserved*
+                - dynamodb:*Reserved*
+                - rds:*Reserved*
+                - elasticache:*Reserved*
+                - redshift:*Reserved*
+                - aws-marketplace:*
+              Resource:
+                - '*'
+
+  IAMTerraformUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName:
+        Ref: IAMTerraformUser
+
+  EC2LaunchInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: "EC2InstancePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - ec2:Describe*
+                  - ec2messages:*
+                  - ssm:*
+                Resource: "*"
+
+  EC2LaunchInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EC2LaunchInstanceRole
+
+  EC2InstanceIDE:
+    Type: AWS::EC2::Instance
+    Properties:
+      IamInstanceProfile:
+        Ref: EC2LaunchInstanceProfile
+      InstanceType:
+        Ref: EC2InstanceTypeIDE
+      KeyName:
+        Ref: KeyName
+      ImageId:
+        Ref: EC2ImageIDEId
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - Ref: EC2SecurityGroupIDE
+            - Ref: EC2SecurityGroupInternal
+          SubnetId:
+            Ref: SubnetIdA
+      UserData:
+        Fn::Base64: !Sub |
+            #!/bin/bash -ex
+            echo starting v1.04...
+            whoami
+            pwd
+
+            mkdir -p /cloudacademy/lab
+            cd /cloudacademy/lab            
+            #curl -sL https://api.github.com/repos/cloudacademy/k8s-lab-cilium/releases/latest | jq -r '.assets[].browser_download_url' | wget -qi -
+            #unzip *.zip
+            chown -R ec2-user:ec2-user /cloudacademy            
+
+            echo starting docker IDE containers...
+            docker run \
+              --env TERRAFORM_EC2_SUBNET_ID=${SubnetIdA} \
+              --env AWS_ACCESS_KEY_ID=${IAMTerraformUserAccessKey} \
+              --env AWS_SECRET_ACCESS_KEY='${IAMTerraformUserAccessKey.SecretAccessKey}' \
+              --env AWS_DEFAULT_REGION=us-west-2 \
+              --privileged --name ide -dit --restart unless-stopped -p 80:3000 -v "/cloudacademy/lab:/home/project:cached" cloudacademydevops/theia:terraform
+
+            echo finished!!
+      Tags:
+        - Key: Name
+          Value: ide.cloudacademy.platform.instance
+
+Outputs:
+  SubnetIdA:
+    Description: Subnet used in the VPC
+    Value: !Join [",", [!Ref SubnetIdA]]
+
+  SubnetIdB:
+    Description: Subnet used in the VPC
+    Value: !Join [",", [!Ref SubnetIdB]]
+
+  VpcId:
+    Description: The VPC Id
+    Value: !Ref VpcId
+
+  userdataWebIDEUrl:
+    Description: The URL to the IDE
+    Value: !Sub 'http://${EC2InstanceIDE.PublicIp}'

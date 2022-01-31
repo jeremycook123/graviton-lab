@@ -329,6 +329,7 @@ Resources:
                 StringEquals:
                   'ec2:InstanceType':
                     - t2.micro
+                    - t4g.micro
             - Effect: Allow
               Action:
               - ec2:RunInstances
@@ -416,6 +417,13 @@ Resources:
 
   EC2InstanceIDE:
     Type: AWS::EC2::Instance
+    DependsOn:
+      - AppSecurityGroup
+      - MongoDBSecurityGroup
+      - ApplicationLoadBalancer
+      - EC2TargetGroupWebserver
+      - EC2TargetGroupAPI
+      - IAMTerraformUserAccessKey
     Properties:
       IamInstanceProfile:
         Ref: EC2LaunchInstanceProfile
@@ -448,7 +456,13 @@ Resources:
 
             echo starting docker IDE containers...
             docker run \
-              --env TERRAFORM_EC2_SUBNET_ID=${SubnetIdA} \
+              --env LAB_SUBNET_A_ID=${SubnetIdA} \
+              --env LAB_SUBNET_B_ID=${SubnetIdA} \
+              --env LAB_WEBSERVER_SG_ID=${AppSecurityGroup} \
+              --env LAB_MONGODB_SG_ID=${MongoDBSecurityGroup} \
+              --env LAB_ALB_DNS=${ApplicationLoadBalancer.DNSName} \
+              --env LAB_WEBSERVER_TARGETGROUP_ARN=${EC2TargetGroupWebserver} \
+              --env LAB_API_TARGETGROUP_ARN=${EC2TargetGroupAPI} \
               --env AWS_ACCESS_KEY_ID=${IAMTerraformUserAccessKey} \
               --env AWS_SECRET_ACCESS_KEY='${IAMTerraformUserAccessKey.SecretAccessKey}' \
               --env AWS_DEFAULT_REGION=us-west-2 \

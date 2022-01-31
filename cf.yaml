@@ -304,6 +304,7 @@ Resources:
               - "/languages/*"
               - "/languages/*/*"
               - "/ok"
+              - "/cpu"
       Actions:
         - Type: forward
           TargetGroupArn: !Ref EC2TargetGroupAPI
@@ -456,14 +457,14 @@ Resources:
 
             echo starting docker IDE containers...
             docker run \
-              --env LAB_KEY_NAME=${KeyName} \
-              --env LAB_SUBNET_A_ID=${SubnetIdA} \
-              --env LAB_SUBNET_B_ID=${SubnetIdB} \
-              --env LAB_WEBSERVER_SG_ID=${AppSecurityGroup} \
-              --env LAB_MONGODB_SG_ID=${MongoDBSecurityGroup} \
-              --env LAB_ALB_DNS=${ApplicationLoadBalancer.DNSName} \
-              --env LAB_WEBSERVER_TARGETGROUP_ARN=${EC2TargetGroupWebserver} \
-              --env LAB_API_TARGETGROUP_ARN=${EC2TargetGroupAPI} \
+              --env TF_VAR_key_name=${KeyName} \
+              --env TF_VAR_subnet_a_id=${SubnetIdA} \
+              --env TF_VAR_subnet_b_id=${SubnetIdB} \
+              --env TF_VAR_webserver_sg_id=${AppSecurityGroup} \
+              --env TF_VAR_mongodb_sg_id=${MongoDBSecurityGroup} \
+              --env TF_VAR_alb_dns=${ApplicationLoadBalancer.DNSName} \
+              --env TF_VAR_webserver_target_group_arn=${EC2TargetGroupWebserver} \
+              --env TF_VAR_api_target_group_arn=${EC2TargetGroupAPI} \
               --env AWS_ACCESS_KEY_ID=${IAMTerraformUserAccessKey} \
               --env AWS_SECRET_ACCESS_KEY='${IAMTerraformUserAccessKey.SecretAccessKey}' \
               --env AWS_DEFAULT_REGION=us-west-2 \

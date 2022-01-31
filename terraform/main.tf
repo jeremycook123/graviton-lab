@@ -29,11 +29,11 @@ module "application" {
 
   instance_type     = var.app_instance_type
   key_name          = var.key_name
-  subnets           = [subnet_a_id, subnet_b_id]
+  subnets           = [var.subnet_a_id, var.subnet_b_id]
   webserver_sg_id   = var.webserver_sg_id
   mongodb_ip        = module.storage.private_ip
   alb_dns           = var.alb_dns
-  target_group_arns = [web_target_group_arn, api_target_group_arn]
+  target_group_arns = [var.web_target_group_arn, var.api_target_group_arn]
 
   depends_on = [
     module.storage

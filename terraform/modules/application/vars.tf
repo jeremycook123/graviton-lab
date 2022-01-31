@@ -18,4 +18,4 @@ variable "asg_min_size" {
 
 variable "subnets" {}
 variable "alb_dns" {}
-target_group_arns {}
+variable "target_group_arns" {}

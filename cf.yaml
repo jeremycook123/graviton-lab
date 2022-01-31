@@ -463,7 +463,7 @@ Resources:
               --env TF_VAR_webserver_sg_id=${AppSecurityGroup} \
               --env TF_VAR_mongodb_sg_id=${MongoDBSecurityGroup} \
               --env TF_VAR_alb_dns=${ApplicationLoadBalancer.DNSName} \
-              --env TF_VAR_webserver_target_group_arn=${EC2TargetGroupWebserver} \
+              --env TF_VAR_web_target_group_arn=${EC2TargetGroupWebserver} \
               --env TF_VAR_api_target_group_arn=${EC2TargetGroupAPI} \
               --env AWS_ACCESS_KEY_ID=${IAMTerraformUserAccessKey} \
               --env AWS_SECRET_ACCESS_KEY='${IAMTerraformUserAccessKey.SecretAccessKey}' \

@@ -456,8 +456,9 @@ Resources:
 
             echo starting docker IDE containers...
             docker run \
+              --env LAB_KEY_NAME=${KeyName} \
               --env LAB_SUBNET_A_ID=${SubnetIdA} \
-              --env LAB_SUBNET_B_ID=${SubnetIdA} \
+              --env LAB_SUBNET_B_ID=${SubnetIdB} \
               --env LAB_WEBSERVER_SG_ID=${AppSecurityGroup} \
               --env LAB_MONGODB_SG_ID=${MongoDBSecurityGroup} \
               --env LAB_ALB_DNS=${ApplicationLoadBalancer.DNSName} \

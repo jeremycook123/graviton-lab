@@ -1,5 +1,11 @@
 resource "aws_instance" "mongo" {
-  ami                    = "ami-02868af3c3df4b3aa"
+  
+  #x86
+  ami = "ami-02868af3c3df4b3aa"
+  
+  #arm64
+  #ami = "ami-078278691222aee06"
+  
   instance_type          = var.instance_type
   key_name               = var.key_name
   subnet_id              = var.subnet_id

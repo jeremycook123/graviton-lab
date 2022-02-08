@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Cloud Academy IDE Lab Platform - Terraform Git Management v1.0.0"
+Description: "Cloud Academy IDE Lab Platform - Graviton Migration Lab v1.0.0"
 
 Parameters:
   VpcId:
@@ -374,6 +374,8 @@ Resources:
                 - elasticache:*Reserved*
                 - redshift:*Reserved*
                 - aws-marketplace:*
+                - ec2:DeleteVpc
+                - ec2:DeleteSubnet
               Resource:
                 - '*'
 
@@ -453,8 +455,8 @@ Resources:
             cd /cloudacademy/lab            
             #curl -sL https://api.github.com/repos/cloudacademy/k8s-lab-cilium/releases/latest | jq -r '.assets[].browser_download_url' | wget -qi -
             #unzip *.zip
-            chown -R ec2-user:ec2-user /cloudacademy            
-
+            chown -R ec2-user:ec2-user /cloudacademy
+            
             echo starting docker IDE containers...
             docker run \
               --env TF_VAR_key_name=${KeyName} \
@@ -468,7 +470,7 @@ Resources:
               --env AWS_ACCESS_KEY_ID=${IAMTerraformUserAccessKey} \
               --env AWS_SECRET_ACCESS_KEY='${IAMTerraformUserAccessKey.SecretAccessKey}' \
               --env AWS_DEFAULT_REGION=us-west-2 \
-              --privileged --name ide -dit --restart unless-stopped -p 80:3000 -v "/cloudacademy/lab:/home/project:cached" cloudacademydevops/theia:terraform
+              --privileged --name ide -dit --restart unless-stopped -p 80:3000 -v "/cloudacademy/lab:/home/project:cached" cloudacademydevops/theia:2022v1
 
             echo finished!!
       Tags:

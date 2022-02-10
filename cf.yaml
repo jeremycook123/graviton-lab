@@ -470,7 +470,7 @@ Resources:
               --env AWS_ACCESS_KEY_ID=${IAMTerraformUserAccessKey} \
               --env AWS_SECRET_ACCESS_KEY='${IAMTerraformUserAccessKey.SecretAccessKey}' \
               --env AWS_DEFAULT_REGION=us-west-2 \
-              --privileged --name ide -dit --restart unless-stopped -p 80:3000 -v "/cloudacademy/lab:/home/project:cached" cloudacademydevops/theia:2022v1
+              --privileged --name ide -dit --restart unless-stopped -p 80:3000 -v "/cloudacademy/lab:/home/project:cached" cloudacademydevops/theia:2022v2
 
             echo finished!!
       Tags:
